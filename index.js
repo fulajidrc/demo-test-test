@@ -17,6 +17,8 @@ app.get('/', (req, res)=>{
 //     res.send({message: 'test OK'});
 // })
 
+
+
 app.listen(3000, () => {
     console.log('server running on 3000 port');
 })
