@@ -1,4 +1,4 @@
-const model = require("../models");
+const {User} = require("../models");
 const { Op } = require("sequelize");
 
 const bcrypt = require('bcrypt');
@@ -128,11 +128,36 @@ controller.getOne = async function (req, res) {
     }
 };
 
+controller.generateToken = async (req, res) => {
+    console.log(req.body.refreshToken);
+    const decoded = await jwt.verify(req.body.refreshToken,  process.env.JWT_KEY);
+
+    const userData = await User.findOne({ where: {
+        id: decoded.id
+    }});
+    const token = jwt.sign({ 
+        id: userData.id,
+        name: userData.name,
+        email: userData.email,
+        role: userData.role, 
+        createdAt: userData.createdAt,
+     }, process.env.JWT_KEY, 
+     { expiresIn: 10 * 60 });
+
+
+    res.status(200)
+                .json({ 
+                    message: "access token!", 
+                    data: userData,
+                    token: token,
+                });
+}
+
 controller.login = async function (req, res) {
     try {
-        const userData = await getOneUser({
-            username: req.body.username
-        });
+        const userData = await User.findOne({ where: {
+            email: req.body.email
+        }});
 
         if (userData) {
             const checkPassword = await bcrypt.compare(req.body.password, userData.password);
@@ -140,17 +165,29 @@ controller.login = async function (req, res) {
                 //token expire in one hour
                 const token = jwt.sign({ 
                     id: userData.id,
-                    username: userData.username,
+                    name: userData.name,
+                    email: userData.email,
+                    role: userData.role, 
                     createdAt: userData.createdAt,
                  }, process.env.JWT_KEY, 
-                 { expiresIn: 60 * 60 });
+                 { expiresIn: 10 * 10 * 60 });
+
+                 const refreshToken = jwt.sign({ 
+                    id: userData.id,
+                    name: userData.name,
+                    email: userData.email,
+                    role: userData.role, 
+                    createdAt: userData.createdAt,
+                 }, process.env.JWT_KEY, 
+                 { expiresIn: 24 * 60 * 60 });
                  res.cookie('loginToken', token)
                 res
                 .status(200)
                 .json({ 
                     message: "User login successfully!", 
                     data: userData,
-                    token: token
+                    token: token,
+                    refreshToken
                 });
             } else{
                 res
@@ -161,6 +198,7 @@ controller.login = async function (req, res) {
             res.status(400).json({ message: "Connection failed", data: [] });
         }
     } catch (error) {
+        console.log('error', error);
         res.status(404).json({ message: error });
     }
 };
@@ -184,6 +222,33 @@ controller.logout = async function (req, res) {
         user: req.user
     });
 };
+
+controller.signup = async function (req, res) {
+    try {
+        const checkUser = await User.findOne({where:{email: req.body.email}})
+        if(checkUser){
+            return res.status(400)
+                .json({ 
+                    message: "Email already exits!", 
+                });
+        }
+        const hash = await bcrypt.hash(req.body.password, parseInt(process.env.SALTROUND))
+        const userData = await User.create({...req.body, password: hash});
+        if (userData) {
+            return res.status(200)
+                .json({ 
+                    message: "Signup successfully!", 
+                    data: userData,
+                });
+             } else {
+            res.status(400).json({ message: "Connection failed", data: [] });
+        }
+    } catch (error) {
+        console.log('error', error);
+        res.status(404).json({ message: error.message });
+    }
+};
+
 
 module.exports = controller;
 

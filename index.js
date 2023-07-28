@@ -9,9 +9,16 @@ app.use(cookieParser());
 const routes = require('./routes');
 app.use('/api/user', routes.user);
 app.use('/api/auth', routes.auth);
+app.use('/api/leave', routes.leave);
+
 app.get('/', (req, res)=>{
     res.send({message: 'OK'});
 })
+
+const {dbInit} = require('./models')
+
+dbInit();
+//dbInit
 
 // app.get('/test', (req, res)=>{
 //     res.send({message: 'test OK'});

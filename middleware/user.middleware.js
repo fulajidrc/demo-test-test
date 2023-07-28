@@ -4,12 +4,11 @@ const jwt = require('jsonwebtoken');
 const authMiddleware =  (req, res, next) => {
     try{
         const authHeader = req.headers["authorization"];
-    
+        console.log('authHeader');
         if(authHeader){
-            console.log('working');
             const decoded = jwt.verify(authHeader, process.env.JWT_KEY);
             console.log('decoded', decoded);
-            if(decoded){
+            if(decoded && decoded.role == 'employee'){
                 req.user = decoded;
                 next();
             }else{
@@ -23,7 +22,6 @@ const authMiddleware =  (req, res, next) => {
             });
         }
     }catch(error){
-        console.log(error);
         return res.status(401).json({
             message: 'Unauthorize access!'
         });
